@@ -37,8 +37,8 @@ void swapPointers(void* p1, void* p2)
 void makeVerticalLine(int width, int height, RenderTexture2D& target)
 {
     BeginTextureMode(target);
-    for (int y = 0; y < height; y++)
-        DrawPixel(width, y, WHITE);
+
+        DrawRectangle(width, 0, 1, height, WHITE);
 
     EndTextureMode();
 }
