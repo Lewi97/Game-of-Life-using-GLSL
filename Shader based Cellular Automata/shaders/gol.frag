@@ -8,7 +8,7 @@ uniform sampler2D u_cur;
 
 int isPixelOn(vec2 pixOffset)
 {
-    return int(ceil(texture2D(u_cur, (gl_FragCoord.xy + pixOffset) / u_resolution).r));
+    return int(texture(u_cur, (gl_FragCoord.xy + pixOffset) / u_resolution).r);
 }
 
 void main(){
@@ -38,7 +38,7 @@ void main(){
         isPixelOn( vec2(-1,1) ) + // top right
         isPixelOn( vec2(-1,-1));  // bot right
 
-    vec4 image = texture2D(u_cur, p);
+    vec4 image = texture(u_cur, p);
 
     float color = rules[sum].x * image.r + rules[sum].y;
     
