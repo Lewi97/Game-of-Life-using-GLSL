@@ -5,10 +5,7 @@
 void fillScreen(Vector2 screen, RenderTexture2D& target)
 {
     BeginTextureMode(target);
-
-    for (int x = 0; x < screen.x; x++)
-        for (int y = 0; y < screen.y; y++)
-            DrawPixel(x, y, BLACK);
+    ClearBackground(BLACK);
 
     EndTextureMode();
 }
@@ -27,18 +24,22 @@ void fillScreenRand(Vector2 screen, RenderTexture2D& target)
     EndTextureMode();
 }
 
-void swapPointers(void* p1, void* p2)
+void spawnGlider(int x, int y, RenderTexture2D& target)
 {
-    void* swap = p1;
-    p1 = p2;
-    p2 = swap;
+    BeginTextureMode(target);
+    
+    DrawPixel(x, y - 1, WHITE);
+    DrawPixel(x + 1, y, WHITE);
+    DrawRectangle(x - 1, y + 1, 3, 1, WHITE);
+    
+    EndTextureMode();
 }
 
 void makeVerticalLine(int width, int height, RenderTexture2D& target)
 {
     BeginTextureMode(target);
 
-        DrawRectangle(width, 0, 1, height, WHITE);
+        DrawRectangle(width, 50, 1, height-100, WHITE);
 
     EndTextureMode();
 }
@@ -53,25 +54,26 @@ int main()
     RenderTexture2D currentGen = LoadRenderTexture(screenWidth, screenHeight);
     RenderTexture2D nextGen = LoadRenderTexture(screenWidth, screenHeight);
 
+    auto* currentPointer = &currentGen;
+    auto* nextPointer = &nextGen;
+
     Rectangle targetRect{ 0, 0, (float)currentGen.texture.width, (float)-currentGen.texture.height };
 
     Shader shader = LoadShader(0, "shaders/gol.frag");
     int u_resolution_loc = GetShaderLocation(shader, "u_resolution");
     int u_cur_loc = GetShaderLocation(shader, "u_cur");
-
     float s_resolution[2] = { (float)screenWidth, (float)screenHeight };
     
-    SetShaderValueTexture(shader, u_cur_loc, currentGen.texture);
     SetShaderValue(shader, u_resolution_loc, s_resolution, SHADER_UNIFORM_VEC2);
 
     bool runSimulation = false;
     float simTimer = 0.f;
-    float simUpdateTime = 0.016f;
+    float simUpdateTime = 0.007f; // 144fps
 
     fillScreen({ (float)screenWidth, (float)screenHeight }, nextGen);
-    fillScreenRand({ (float)screenWidth, (float)screenHeight }, nextGen);
-    
-    currentGen.texture = nextGen.texture;
+    fillScreen({ (float)screenWidth, (float)screenHeight }, currentGen);
+
+    SetShaderValueTexture(shader, u_cur_loc, currentGen.texture);
 
     while (!WindowShouldClose())
     {
@@ -79,7 +81,7 @@ int main()
 
         if (IsMouseButtonDown(MOUSE_LEFT_BUTTON))
         {
-            BeginTextureMode(nextGen);
+            BeginTextureMode(*currentPointer);
                 Vector2 mouse = GetMousePosition();
                 DrawPixelV(mouse, WHITE);
             EndTextureMode();
@@ -89,39 +91,48 @@ int main()
             runSimulation = !runSimulation;
 
         if (IsKeyPressed(KEY_C))
-            fillScreen({screenWidth, screenHeight}, nextGen);
-
-        SetShaderValueTexture(shader, u_cur_loc, currentGen.texture);
+            fillScreen({screenWidth, screenHeight}, *currentPointer);
 
         if (IsKeyPressed(KEY_A))
-            makeVerticalLine(GetMouseX(), screenHeight, nextGen);
+            makeVerticalLine(GetMouseX(), screenHeight, *currentPointer);
 
+        if (IsKeyPressed(KEY_B))
+            spawnGlider(GetMouseX(), GetMouseY(), *currentPointer);
+
+        simTimer += delta;
         if (runSimulation)
-        {
-            simTimer += delta;
             if (simTimer > simUpdateTime)
             {
-                swapPointers(&currentGen, &nextGen);
-                BeginTextureMode(nextGen);
+                BeginTextureMode(*nextPointer);
                     BeginShaderMode(shader);
-                        DrawTextureRec(nextGen.texture, targetRect, { 0.f,0.f }, WHITE);
+                        DrawTextureRec(nextPointer->texture, targetRect, { 0.f,0.f }, WHITE);
                     EndShaderMode();
                 EndTextureMode();
+                
+                auto* swap = currentPointer;
+                currentPointer = nextPointer;
+                nextPointer = swap;
+                
                 simTimer = 0.f;
+                
+                SetShaderValueTexture(shader, u_cur_loc, currentPointer->texture);
             }
-        }
+        
 
         BeginDrawing();
 
             ClearBackground(RAYWHITE);
-            DrawTextureRec(nextGen.texture, targetRect, { 0.f,0.f }, WHITE);
+            DrawTextureRec(currentPointer->texture, targetRect, { 0.f,0.f }, WHITE);
             DrawFPS(10, 10);
             std::string infoString = "Cells: " + std::to_string(screenHeight * screenWidth);
             DrawText(infoString.c_str(),10,30,20,RED);
 
         EndDrawing();
-
     }
+
+    UnloadRenderTexture(currentGen);
+    UnloadRenderTexture(nextGen);
+    UnloadShader(shader);
 
     CloseWindow();
 

@@ -6,6 +6,9 @@ uniform vec2 u_resolution;
 
 uniform sampler2D u_cur;
 
+uniform float u_green;
+uniform float u_blue;
+
 int isPixelOn(vec2 pixOffset)
 {
     return int(texture(u_cur, (gl_FragCoord.xy + pixOffset) / u_resolution).r);
@@ -45,10 +48,7 @@ void main(){
     if (color > 0.)
         image.rgb = vec3(color);
     else
-    {
-        image.r = 0.;
-        image.gb -= vec2(0.01, 0.04);
-    }
+        image.rgb -= vec3(1.,0.03,0.03);
     
-    gl_FragColor = vec4(image);
+    gl_FragColor = image;
 }
